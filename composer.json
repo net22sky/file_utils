@@ -1,0 +1,13 @@
+{
+    "name": "deep/project",
+    "authors": [
+        {
+            "name": "net22sky",
+            "email": "admin@i-22.ru"
+        }
+    ],
+    "require": {
+        "illuminate/database": "^10.48",
+        "vlucas/phpdotenv": "^5.6"
+    }
+}

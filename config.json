@@ -1,0 +1,10 @@
+{
+    "directory": ".",
+    "output_file": "document_info.txt",
+    "thumbnail_directory": "thumbnails",
+    "allowed_extensions": ["pdf", "fb2", "djvu"],
+    "thumbnail_size": {
+        "width": 800,
+        "height": 600
+    }
+}
