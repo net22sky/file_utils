@@ -1,12 +1,35 @@
 <?php
-/*
-use Illuminate\Database\Capsule\Manager as Capsule;
+
+namespace App;
 
 require_once __DIR__ . '/vendor/autoload.php';
 
+use Illuminate\Database\Capsule\Manager as Capsule;
+use App\Services\Loggers ;
+use Dotenv\Dotenv;
+use App\Models\Database;
+
+// Инициализируем логгер
+$logFile = __DIR__ . '/logs/app.log';
+$logger = new Loggers($logFile);
+
 // Загружаем переменные окружения из .env файла
-$dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
+$dotenv = Dotenv::createImmutable(__DIR__);
 $dotenv->load();
+
+$envFile = __DIR__ . '/.env';
+if (file_exists($envFile)) {
+    $envVariables = parse_ini_file($envFile);
+    if ($envVariables === false) {
+        die("Error: Unable to parse .env file.\n");
+    }
+    foreach ($envVariables as $key => $value) {
+        putenv("$key=$value");
+        print_r($key);
+    }
+} else {
+    die("Error: .env file not found.\n");
+}
 
 // Настройка параметров подключения к базе данных
 $dbConfig = [
@@ -21,30 +44,46 @@ $dbConfig = [
     'prefix' => '',
 ];
 
-// Проверка подключения к базе данных
-function connectToDatabase(array $dbConfig): bool {
-    $maxAttempts = 5; // Максимальное количество попыток подключения
-    $attemptDelay = 2; // Задержка между попытками (в секундах)
-
+// Проверка подключения к базе данных через PDO
+function connectToDatabase(array $dbConfig, Loggers $logger): bool {
+    $maxAttempts = intval(getenv('DB_MAX_ATTEMPTS') ?? 5); // Максимальное количество попыток
+    $attemptDelay = intval(getenv('DB_ATTEMPT_DELAY') ?? 2); // Задержка между попытками (в секундах)
+    echo "Подключение 1";
+    print_r($dbConfig);
     for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+        echo "Подключение";
         try {
+
+            $dsn = "mysql:host={$dbConfig['host']};port={$dbConfig['port']};dbname={$dbConfig['database']};charset=utf8";
+                $options = [
+                    \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
+                    \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC,
+                ];
+
+                $pdo = new \PDO($dsn, $dbConfig['username'], $dbConfig['password'], $options);
+
             // Создаём новое соединение через PDO
-            $dsn = "mysql:host={$dbConfig['host']};port={$dbConfig['port']};dbname={$dbConfig['database']};charset={$dbConfig['charset']}";
-            $pdo = new \PDO($dsn, $dbConfig['username'], $dbConfig['password'], [
+            /*$dsn = "mysql:host={$dbConfig['host']};port={$dbConfig['port']};dbname={$dbConfig['database']};charset={$dbConfig['charset']}";
+            $options = [
                 \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
                 \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC,
-            ]);
+            ];
 
+            new \PDO($dsn, $dbConfig['username'], $dbConfig['password'], $options);*/
+
+            $logger->info("Подключение к базе данных успешно установлено.", 'info');
             echo "Подключение к базе данных успешно установлено.\n";
             return true;
         } catch (\PDOException $e) {
+            $message = "Ошибка подключения к базе данных (попытка #$attempt): " . $e->getMessage();
+            $logger->error($message, 'error');
+            echo $message . "\n";
+
             if ($attempt === $maxAttempts) {
-                // Если это последняя попытка, выбрасываем ошибку
-                echo "Ошибка подключения к базе данных (попытка #$attempt): " . $e->getMessage() . "\n";
                 return false;
             }
 
-            echo "Не удалось подключиться к базе данных (попытка #$attempt). Повторная попытка через {$attemptDelay} секунд...\n";
+            echo "Повторная попытка через {$attemptDelay} секунд...\n";
             sleep($attemptDelay);
         }
     }
@@ -53,95 +92,22 @@ function connectToDatabase(array $dbConfig): bool {
 }
 
 // Выполняем проверку подключения
-if (!connectToDatabase($dbConfig)) {
-    exit(1); // Прерываем выполнение скрипта, если подключение не удалось
+if (!connectToDatabase($dbConfig ,$logger)) {
+    $logger->error("Не удалось подключиться к базе данных после всех попыток.", 'critical');
+    exit(1);
 }
-
-// Инициализация Eloquent
-$capsule = new Capsule;
-
-$capsule->addConnection($dbConfig);
-
-// Запуск Eloquent
-$capsule->setAsGlobal();
-$capsule->bootEloquent();
-
-*/
-
-use Illuminate\Database\Capsule\Manager as Capsule;
-
-require_once __DIR__ . '/vendor/autoload.php';
-
-// Загружаем переменные окружения из .env файла
-$dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
-$dotenv->load();
-
-// Настройка параметров подключения к базе данных
-$dbConfig = [
-    'host' => getenv('DB_HOST'),
-    'port' => getenv('DB_PORT'),
-    'database' => getenv('DB_DATABASE'),
-    'username' => getenv('DB_USERNAME'),
-    'password' => getenv('DB_PASSWORD'),
-];
-
-// Проверка подключения к базе данных через MySQLi
-function connectToDatabase(array $dbConfig): bool {
-    $maxAttempts = intval(getenv('DB_MAX_ATTEMPTS') ?? 5); // Максимальное количество попыток
-    $attemptDelay = intval(getenv('DB_ATTEMPT_DELAY') ?? 2); // Задержка между попытками (в секундах)
-
-    for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
-        try {
-            // Создаём новое соединение через MySQLi
-            $mysqli = new \mysqli(
-                $dbConfig['host'],
-                $dbConfig['username'],
-                $dbConfig['password'],
-                $dbConfig['database'],
-                $dbConfig['port']
-            );
-
-            // Проверяем успешность подключения
-            if ($mysqli->connect_error) {
-                throw new \Exception("Ошибка подключения: " . $mysqli->connect_error);
-            }
-
-            // Устанавливаем кодировку UTF-8
-            $mysqli->set_charset("utf8mb4");
-
-            echo "Подключение к базе данных успешно установлено.\n";
-            return true;
-        } catch (\Exception $e) {
-            if ($attempt === $maxAttempts) {
-                // Если это последняя попытка, выбрасываем ошибку
-                echo "Ошибка подключения к базе данных (попытка #$attempt): " . $e->getMessage() . "\n";
-                return false;
-            }
-
-            echo "Не удалось подключиться к базе данных (попытка #$attempt). Повторная попытка через {$attemptDelay} секунд...\n";
-            sleep($attemptDelay);
-        }
-    }
-
-    return false;
-}
-
-// Выполняем проверку подключения
-if (!connectToDatabase($dbConfig)) {
-    exit(1); // Прерываем выполнение скрипта, если подключение не удалось
-}
-
+/*
 // Инициализация Eloquent
 $capsule = new Capsule;
 
 // Передаём конфигурацию Eloquent
 $capsule->addConnection([
-    'driver' => 'mysql',
-    'host' => $dbConfig['host'],
-    'port' => $dbConfig['port'],
-    'database' => $dbConfig['database'],
-    'username' => $dbConfig['username'],
-    'password' => $dbConfig['password'],
+    'driver' => getenv('DB_CONNECTION'),
+    'host' => getenv('DB_HOST'),
+    'port' => getenv('DB_PORT'),
+    'database' => getenv('DB_DATABASE'),
+    'username' => getenv('DB_USERNAME'),
+    'password' => getenv('DB_PASSWORD'),
     'charset' => 'utf8mb4',
     'collation' => 'utf8mb4_unicode_ci',
     'prefix' => '',
@@ -150,3 +116,7 @@ $capsule->addConnection([
 // Запуск Eloquent
 $capsule->setAsGlobal();
 $capsule->bootEloquent();
+*/
+
+// initialize Illuminate database connection 
+new Database();

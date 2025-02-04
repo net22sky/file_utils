@@ -1,0 +1,10 @@
+{
+    "directory": "./tests/fixtures",
+    "output_file": "document_info.txt",
+    "thumbnail_directory": "./tests/thumbnails",
+    "allowed_extensions": ["pdf", "fb2"],
+    "thumbnail_size": {
+        "width": 800,
+        "height": 600
+    }
+}
