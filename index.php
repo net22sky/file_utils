@@ -7,6 +7,7 @@ require_once __DIR__ . '/App/Config/Config.php'; // Конфигурация
 use App\Core\DocumentProcessor;
 use App\Config;
 use App\Services\Loggers as Logger;
+use App\Services\DataManager;
 
 // Инициализация логгера
 $logFile = __DIR__ . '/logs/app.log';
@@ -69,7 +70,10 @@ try {
 
     // Обработка документов
     $logger->info("Начало обработки документов...");
-    $processor = new DocumentProcessor($config, $logger);
+    
+    $dataManager = new DataManager($logger);
+
+    $processor = new DocumentProcessor($config, $logger,$dataManager);
     $results = $processor->processDirectory();
 
     if (!empty($results)) {

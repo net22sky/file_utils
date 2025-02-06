@@ -7,43 +7,34 @@ use App\Services\ThumbnailCreator;
 use App\Utils\FileHashCalculator;
 use App\Utils\DateFormatter;
 use App\Utils\DateFormats;
-use App\Services\Loggers as Logger;
-use App\Models\Document;
-use Ramsey\Uuid\Uuid;
 use App\Utils\ZipFileExtractor;
+use App\Services\Loggers as Logger;
+use App\Interfaces\IDataManager;
+use App\Models\Document;
 
-class DocumentProcessor
-{
+class DocumentProcessor {
     private $config;
     private $factory;
     private $thumbnailCreator;
     private $fileHashCalculator;
     private $dateFormatter;
     private $logger;
+    private $dataManager;
 
-    public function __construct(array $config, Logger $logger)
-    {
+    public function __construct(array $config, Logger $logger, IDataManager $dataManager) {
         $this->config = $config;
         $this->factory = new DocumentHandlerFactory($logger);
         $this->fileHashCalculator = new FileHashCalculator($logger);
         $this->dateFormatter = new DateFormatter([DateFormats::YMD, DateFormats::DMY, DateFormats::MDY]);
         $this->logger = $logger;
+        $this->dataManager = $dataManager;
 
         // Передаём FileHashCalculator в ThumbnailCreator
         $this->thumbnailCreator = new ThumbnailCreator(
-            [
-                'width' => getenv('THUMBNAIL_WIDTH') ?? 800,
-                'height' => getenv('THUMBNAIL_HEIGHT') ?? 600,
-            ],
+            ['width' => getenv('THUMBNAIL_WIDTH') ?? 800, 'height' => getenv('THUMBNAIL_HEIGHT') ?? 600],
             $this->fileHashCalculator,
-            $logger
+            $this->logger
         );
-
-        // Создаём корневую директорию для вывода, если её нет
-        if (!is_dir($this->config['output_directory'])) {
-            mkdir($this->config['output_directory'], 0777, true);
-            $this->logger->info("Создана корневая директория для вывода: " . $this->config['output_directory']);
-        }
     }
 
     /**
@@ -51,8 +42,7 @@ class DocumentProcessor
      *
      * @return array Массив с результатами обработки документов.
      */
-    public function processDirectory(): array
-    {
+    public function processDirectory(): array {
         $results = [];
         $allowedExtensions = $this->config['allowed_extensions'];
         $directory = $this->config['directory'];
@@ -81,13 +71,12 @@ class DocumentProcessor
 
                 if ($ext === 'zip') {
                     // Обработка ZIP-архива
-                    $extractedFiles = $zipExtractor->extractSupportedFiles($filePath, $outputDir, $allowedExtensions);
-                    foreach ($extractedFiles as $extractedFile) {
-                        $this->processSingleFile($extractedFile, $outputDir, pathinfo($extractedFile, PATHINFO_EXTENSION));
-                    }
+                    $zipExtractor->extractSupportedFiles($filePath, $outputDir, $allowedExtensions, function ($extractedFile, $outputDir, $extension) use (&$results) {
+                        $this->processSingleFile($extractedFile, $outputDir, $extension, $results);
+                    });
                 } elseif (in_array($ext, $allowedExtensions)) {
                     // Обработка обычных файлов
-                    $this->processSingleFile($filePath, $outputDir, $ext);
+                    $this->processSingleFile($filePath, $outputDir, $ext, $results);
                 }
             }
         }
@@ -96,14 +85,41 @@ class DocumentProcessor
     }
 
     /**
+     * Выводит результаты обработки документов в консоль.
+     *
+     * @param array $results Массив с результатами обработки документов.
+     */
+    public function printResults(array $results): void {
+        if (!empty($results)) {
+            echo "\nНайденные документы:\n";
+            foreach ($results as $result) {
+                echo "Путь: " . $result['path'] . "\n";
+                echo "Название: " . $result['title'] . "\n";
+                echo "Дата создания: " . $result['creation_date'] . "\n";
+                echo "Хеш: " . $result['hash'] . "\n";
+
+                if ($result['thumbnail']) {
+                    echo "Миниатюра: " . $result['thumbnail'] . "\n";
+                } else {
+                    echo "Миниатюра: Не создана\n";
+                }
+
+                echo str_repeat("-", 40) . "\n";
+            }
+        } else {
+            echo "Документы не найдены.\n";
+        }
+    }
+
+    /**
      * Обрабатывает один файл: создаёт миниатюру, генерирует JSON-метаданные и сохраняет его в базу данных.
      *
      * @param string $filePath Путь к файлу.
      * @param string $outputDir Директория для сохранения результатов.
      * @param string $extension Расширение файла.
+     * @param array &$results Ссылка на массив с результатами обработки.
      */
-    private function processSingleFile(string $filePath, string $outputDir, string $extension): void
-    {
+    private function processSingleFile(string $filePath, string $outputDir, string $extension, array &$results): void {
         try {
             // Вычисляем хеш файла
             $hash = $this->fileHashCalculator->calculateHash($filePath);
@@ -150,82 +166,28 @@ class DocumentProcessor
                 $this->logger->warning("Миниатюра не создана для файла: $filePath");
             }
 
-            // Генерируем JSON-метаданные (исправляем количество параметров)
-            $this->generateJsonMetadata($docOutputDir, $title, $normalizedCreationDate, $thumbnailPath);
+            // Сохраняем данные в базу данных через IDataManager
+            $this->dataManager->saveDocumentToDatabase(
+                $newFilePath,
+                $title,
+                $normalizedCreationDate,
+                $thumbnailPath,
+                $hash
+            );
 
-            // Сохраняем данные в базу данных
-            $document = new Document();
-            $document->path = $newFilePath;
-            $document->title = $title;
-            $document->creation_date = $normalizedCreationDate;
-            $document->thumbnail_path = $thumbnailPath ?? null;
-            $document->hash = $hash;
+            // Генерируем JSON-метаданные через IDataManager
+            $this->dataManager->generateJsonMetadata($docOutputDir, $title, $normalizedCreationDate, $thumbnailPath);
 
-            $document->save();
-            $this->logger->info("Документ успешно сохранён: $newFilePath");
+            $results[] = [
+                'path' => $newFilePath,
+                'title' => $title,
+                'creation_date' => $normalizedCreationDate,
+                'thumbnail' => $thumbnailPath,
+                'hash' => $hash,
+            ];
+
         } catch (\Exception $e) {
             $this->logger->error("Ошибка обработки файла $filePath: {$e->getMessage()}");
         }
-    }
-    /**
-     * Выводит результаты обработки документов в консоль.
-     *
-     * @param array $results Массив с результатами обработки документов.
-     */
-    public function printResults(array $results): void
-    {
-        if (!empty($results)) {
-            echo "\nНайденные документы:\n";
-            foreach ($results as $result) {
-                echo "Путь: " . $result['path'] . "\n";
-                echo "Название: " . $result['title'] . "\n";
-                echo "Дата создания: " . $result['creation_date'] . "\n";
-                echo "Хеш: " . $result['hash'] . "\n";
-
-                if ($result['thumbnail']) {
-                    echo "Миниатюра: " . $result['thumbnail'] . "\n";
-                } else {
-                    echo "Миниатюра: Не создана\n";
-                }
-
-                echo str_repeat("-", 40) . "\n";
-            }
-        } else {
-            echo "Документы не найдены.\n";
-        }
-    }
-
-    /**
-     * Генерирует JSON-файл с метаданными о документе.
-     *
-     * @param string $outputDir Директория для сохранения JSON-файла.
-     * @param string $title Название документа.
-     * @param string $creationDate Дата создания документа.
-     * @param string|null $thumbnailPath Путь к миниатюре.
-     */
-    /**
-     * Генерирует JSON-файл с метаданными о документе.
-     *
-     * @param string $outputDir Директория для сохранения JSON-файла.
-     * @param string $title Название документа.
-     * @param string $creationDate Дата создания документа.
-     * @param string|null $thumbnailPath Путь к миниатюре или null, если миниатюра отсутствует.
-     */
-    private function generateJsonMetadata(string $outputDir, string $title, string $creationDate, ?string $thumbnailPath): void
-    {
-        $jsonFilePath = "$outputDir/metadata.json";
-
-        // Подготавливаем метаданные
-        $metadata = [
-            'identifier' => uniqid(),
-            'title' => $title,
-            'date' => $creationDate,
-            'language' => 'ru',
-            'thumbnail' => $thumbnailPath ? basename($thumbnailPath) : null,
-        ];
-
-        // Сохраняем JSON-файл
-        file_put_contents($jsonFilePath, json_encode($metadata, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-        $this->logger->info("JSON-файл с метаданными создан: $jsonFilePath");
     }
 }
