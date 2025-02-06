@@ -1,7 +1,29 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink"><description><title-info><genre>home_crafts</genre><genre>home_pets</genre><author><first-name>Виктор</first-name><middle-name>Владимирович</middle-name><last-name>Горбунов</last-name><id>a5226680-49e1-11e2-856a-002590591ea6</id></author><book-title>Всё о кроликах: разведение, содержание, уход. Практическое руководство</book-title> <annotation><p>Книга станет полезной для кролиководов-любителей. Советы и рекомендации по содержанию, разведению, правильному кормлению кроликов, проведению племенной работы помогут вам вырастить здоровых и крупных животных, получить в большом объеме качественную продукцию: мясо, меховые шкурки и кроличий пух.</p>
-<p>Для широкого круга читателей.</p>
-</annotation> <keywords>подсобное хозяйство,фермерское хозяйство,животноводство,кролиководство</keywords><date value="2015-01-01">2015</date> <coverpage><image l:href="#cover.jpg"/></coverpage><lang>ru</lang> </title-info> <document-info><author> <first-name>Олег</first-name> <last-name>Власов</last-name> <nickname>prussol</nickname> </author> <program-used>FictionBook Editor Release 2.6.6</program-used> <date value="2014-01-10">10.01.2014</date> <src-url>http://www.litres.ru/pages/biblio_book/?art=9531843&amp;lfrom=256301767</src-url><src-ocr>Текст предоставлен правообладателем</src-ocr> <id>68c74a68-e991-11e4-a625-002590591ed2</id> <version>1.0</version> <history><p>V 1.0 by prussol</p>
+<FictionBook xmlns="http://www.gribuser.ru/xml/fictionbook/2.0" xmlns:l="http://www.w3.org/1999/xlink">
+
+<description>
+    <title-info>
+    <genre>home_crafts</genre>
+    <genre>home_pets</genre>
+    <author>
+        <first-name>Виктор</first-name>
+        <middle-name>Владимирович</middle-name>
+        <last-name>Горбунов</last-name>
+        <id>a5226680-49e1-11e2-856a-002590591ea6</id>
+    </author>
+    <book-title>Всё о кроликах: разведение, содержание, уход. Практическое руководство</book-title>
+    <annotation>
+        <p>Книга станет полезной для кролиководов-любителей. Советы и рекомендации по содержанию, разведению, правильному кормлению кроликов, проведению племенной работы помогут вам вырастить здоровых и крупных животных, получить в большом объеме качественную продукцию: мясо, меховые шкурки и кроличий пух.</p>
+        <p>Для широкого круга читателей.</p>
+    </annotation>
+    <keywords>подсобное хозяйство,фермерское хозяйство,животноводство,кролиководство</keywords>
+    <date value="2015-01-01">2015</date>
+    <coverpage>
+        <image l:href="#cover.jpg"/></coverpage>
+        <lang>ru</lang> 
+    </title-info> 
+    <document-info>
+        <author> <first-name>Олег</first-name> <last-name>Власов</last-name> <nickname>prussol</nickname> </author> <program-used>FictionBook Editor Release 2.6.6</program-used> <date value="2014-01-10">10.01.2014</date> <src-url>http://www.litres.ru/pages/biblio_book/?art=9531843&amp;lfrom=256301767</src-url><src-ocr>Текст предоставлен правообладателем</src-ocr> <id>68c74a68-e991-11e4-a625-002590591ed2</id> <version>1.0</version> <history><p>V 1.0 by prussol</p>
 </history> <publisher><first-name/><last-name>Литагент «АСТ»</last-name><id>c9a05514-1ce6-11e2-86b3-b737ee03444a</id></publisher></document-info> <publish-info><book-name>Всё о кроликах: разведение, содержание, уход. Практическое руководство / В.В. Горбунов</book-name> <publisher>АСТ</publisher> <city>Москва</city> <year>2015</year> <isbn>978-5-17-088969-3</isbn> </publish-info> <custom-info info-type="">Всё о кроликах: разведение, содержание, уход. Практи-ческое руководство / В.В. Горбунов</custom-info> </description><body><title><p>Виктор Горбунов</p>
 <p>Всё о кроликах: разведение, содержание, уход</p>
 <p>Практическое руководство</p>

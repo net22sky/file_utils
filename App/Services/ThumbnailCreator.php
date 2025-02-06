@@ -94,50 +94,73 @@ class ThumbnailCreator {
      */
     private function extractFb2Cover(string $fb2Path, string $outputDir): ?string {
         try {
-            // Загружаем содержимое FB2-файла
-            $xml = simplexml_load_file($fb2Path);
-
-            if (!$xml) {
-                $this->logger->warning("Не удалось загрузить FB2-файл: $fb2Path");
+            // Проверяем существование файла
+            if (!file_exists($fb2Path)) {
+                $this->logger->warning("FB2-файл не найден: $fb2Path");
                 return null;
             }
-
-            // Находим тег <coverpage>
-            $coverPage = $xml->xpath('//coverpage/image');
+    
+            // Загружаем содержимое FB2-файла как SimpleXMLElement
+            $xml = simplexml_load_file($fb2Path);
+            if (!$xml) {
+                $this->logger->error("Ошибка загрузки FB2-файла: $fb2Path");
+                return null;
+            }
+    
+            // Ищем ссылку на обложку (<coverpage/image>)
+            $coverPage = $xml->xpath('//description/title-info/coverpage/image');
             if (empty($coverPage)) {
                 $this->logger->info("Обложка не найдена в FB2-файле: $fb2Path");
                 return null;
             }
-
+    
             // Получаем ID обложки
             $coverId = (string)$coverPage[0]['l:href'];
-            $coverId = ltrim($coverId, '#'); // Убираем символ '#'
-
-            // Находим бинарные данные обложки в секции <binary>
-            $binaryData = $xml->xpath("//binary[@id='$coverId']");
-            if (empty($binaryData)) {
-                $this->logger->warning("Бинарные данные обложки не найдены в FB2-файле: $fb2Path");
+            if (empty($coverId)) {
+                $this->logger->warning("ID обложки не указан в FB2-файле: $fb2Path");
                 return null;
             }
-
+            $coverId = ltrim($coverId, '#'); // Убираем символ '#'
+    
+            // Находим бинарные данные обложки (<binary>)
+            $binaryData = $xml->xpath("//binary[@id='$coverId']");
+            if (empty($binaryData)) {
+                $this->logger->warning("Бинарные данные обложки не найдены в FB2-файле: $fb2Path (ID: $coverId)");
+                return null;
+            }
+    
             // Получаем MIME-тип и Base64-данные
             $mimeType = (string)$binaryData[0]['content-type'];
             $base64Data = (string)$binaryData[0];
-
+    
+            if (empty($base64Data)) {
+                $this->logger->warning("Base64-данные обложки пусты в FB2-файле: $fb2Path (ID: $coverId, MIME: $mimeType)");
+                return null;
+            }
+    
             if (strpos($mimeType, 'image/') !== 0) {
                 $this->logger->warning("Неподдерживаемый тип обложки в FB2-файле: $fb2Path ($mimeType)");
                 return null;
             }
-
-            // Сохраняем Base64-данные во временном файле
+    
+            // Генерируем имя временного файла обложки
             $tempCoverPath = tempnam(sys_get_temp_dir(), 'fb2_cover_');
-            file_put_contents($tempCoverPath, base64_decode($base64Data));
-
-            $this->logger->info("Обложка успешно извлечена из FB2-файла: $fb2Path");
+            if ($tempCoverPath === false) {
+                $this->logger->error("Не удалось создать временный файл для обложки из FB2-файла: $fb2Path");
+                return null;
+            }
+    
+            // Декодируем Base64-данные и сохраняем их во временном файле
+            if (file_put_contents($tempCoverPath, base64_decode($base64Data)) === false) {
+                $this->logger->error("Ошибка сохранения обложки из FB2-файла: $fb2Path (ID: $coverId, MIME: $mimeType)");
+                return null;
+            }
+    
+            $this->logger->info("Обложка успешно извлечена из FB2-файла: $fb2Path (ID: $coverId, MIME: $mimeType)");
             return $tempCoverPath;
-
+    
         } catch (\Exception $e) {
-            $this->logger->error("Ошибка извлечения обложки из FB2-файла $fb2Path: {$e->getMessage()}");
+            $this->logger->error("Ошибка обработки FB2-файла $fb2Path: {$e->getMessage()}");
             return null;
         }
     }

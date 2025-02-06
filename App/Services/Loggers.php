@@ -27,5 +27,10 @@ class Loggers {
     public function warning(string $message): void {
         $this->logger->warning($message);
     }
+
+
+    public function critical(string $message): void {
+        $this->logger->critical($message);
+    }
     
 }

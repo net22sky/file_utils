@@ -3,6 +3,7 @@
 namespace App\Handlers;
 
 use Exception;
+use App\Handlers\AbstractDocumentHandler;
 
 class Fb2Handler extends AbstractDocumentHandler {
     public function supports(string $extension): bool {

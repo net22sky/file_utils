@@ -46,6 +46,23 @@ try {
         exit(1); // Прерываем выполнение скрипта, если модули отсутствуют
     }
 
+    // Проверка наличия внешних утилит
+    function checkExternalTools(Logger $logger): bool {
+        $tools = ['pdfinfo', 'ddjvu', 'convert'];
+        foreach ($tools as $tool) {
+            if (!@exec("which $tool")) {
+                $logger->critical("Утилита $tool не найдена.");
+                echo "Ошибка: Утилита $tool не найдена.\n";
+                return false;
+            }
+        }
+        return true;
+    }
+
+    if (!checkExternalTools($logger)) {
+        exit(1);
+    }
+
     // Чтение конфигурации
     $configPath = "config.json";
     $config = Config\readConfig($configPath);
@@ -67,5 +84,5 @@ try {
 } catch (\Exception $e) {
     $logger->critical("Произошла ошибка: " . $e->getMessage());
     echo "Произошла ошибка: " . $e->getMessage() . "\n";
-    exit(1); // Прерываем выполнение при возникновении ошибки
+    exit(1);
 }

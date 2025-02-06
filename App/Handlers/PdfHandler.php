@@ -2,14 +2,7 @@
 
 namespace App\Handlers;
 
-abstract class AbstractDocumentHandler {
-    abstract public function supports(string $extension): bool;
-    abstract public function getInfo(string $filePath): array;
-
-    protected function normalizeDate(string $date): string {
-        return !empty($date) ? $date : "Дата не указана";
-    }
-}
+use App\Handlers\AbstractDocumentHandler;
 
 class PdfHandler extends AbstractDocumentHandler {
     public function supports(string $extension): bool {

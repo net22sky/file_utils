@@ -2,6 +2,8 @@
 
 namespace App\Handlers;
 
+use App\Handlers\AbstractDocumentHandler;
+
 class DjvuHandler extends AbstractDocumentHandler {
     public function supports(string $extension): bool {
         return $extension === 'djvu';

@@ -2,6 +2,7 @@
     "directory": ".",
     "output_file": "document_info.txt",
     "thumbnail_directory": "thumbnails",
+    "output_directory": "output",
     "allowed_extensions": ["pdf", "fb2", "djvu"],
     "thumbnail_size": {
         "width": 800,
